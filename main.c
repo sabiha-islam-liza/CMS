@@ -10,8 +10,18 @@ do {
     printf ("2. Track a complaint.\n");
     printf ("3.Admin authentication.\n");
     printf ("4.Exit\n");
-    printf ()
-  scanf ("%d", & choice);
+    printf ("Enter your choice: ");
+  
+  if (scanf("%d", &choice) != 1) 
+{
+    // make sure to clear the input buffer if the input is invalid
+    while (getchar() != '\n');  
+    { 
+        printf("Invalid input. Please enter a number (1-4).\n");
+    }
+    choice = -1;
+    continue;    // go back to menu
+}
     switch (choice)
  {
 
@@ -24,15 +34,15 @@ do {
      break;
 
     case 3:
-      Admin();
-      break;
+     Admin();
+     break;
 
     case 4:
-      printf("Exiting the program.\n");
-      break;
+     printf("Exiting the program.\n");
+     break;
 
     default:
-      printf("Invalid choice. Please try again.\n");
+     printf("Invalid choice. Please try again.\n");
       
  }
     }
