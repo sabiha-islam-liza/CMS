@@ -3,14 +3,15 @@
  int main ()
  {
     int choice;
-
+do {
     printf("------This is a Comlaint Management System------\n");
     
     printf("1.File a complaint.\n");
     printf ("2. Track a complaint.\n");
     printf ("3.Admin authentication.\n");
     printf ("4.Exit\n");
- 
+    printf ()
+  scanf ("%d", & choice);
     switch (choice)
  {
 
@@ -23,16 +24,18 @@
      break;
 
     case 3:
-      AdminAuthentication();
+      Admin();
       break;
 
     case 4:
       printf("Exiting the program.\n");
       break;
 
-    case 5:
+    default:
       printf("Invalid choice. Please try again.\n");
       
  }
+    }
+    while(choice != 4);
     return 0;
  }
