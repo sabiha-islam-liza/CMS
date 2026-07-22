@@ -1,8 +1,7 @@
 #include<stdio.h>
 #include <string.h>
-
+#include "complaint.h"
 #define setup_key "syntexerror"
-
 
 void adminregister()
 {
@@ -79,12 +78,14 @@ int admin_login()
             }
 
         }
-
-int main ()
-  {
-int choice;
+        
+void Admin()
+{
+    int choice;
+    
+  
 do {
-    printf("------This is a Comlaint Management System------\n");
+    printf("------Admin Panel------\n");
     
     printf("1.Admin register.\n");
     printf ("2. Admin login.\n");
@@ -106,8 +107,7 @@ do {
             printf("Invalid choice. Please try again.\n");
     }
 
-
   } 
 while(choice != 3); 
-    return 0;
+
 }
