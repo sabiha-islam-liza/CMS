@@ -70,7 +70,79 @@ void adminregister() {
 
     printf("\n[SUCCESS] Admin registered successfully.\n");
 }
+void admin_portal() {
+    int choice;
 
+    do {
+        printf("\n========================================\n");
+        printf("             ADMIN DASHBOARD            \n");
+        printf("========================================\n");
+        printf("1. View Complaints Menu\n");
+        printf("2. Assign Complaint to Team\n");
+        printf("3. Update Complaint Status\n");
+        printf("4. Delete Complaint\n");
+        printf("5. Logout\n");
+        printf("Enter Choice: ");
+
+        if (scanf("%d", &choice) != 1) {
+            while (getchar() != '\n'); // Clear buffer on invalid input
+            printf("\nInvalid input! Please enter a number.\n");
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                viewComplaintsMenu();
+                break;
+
+            case 2: {
+                Complaint complaints[MAX];
+                int count = 0;
+
+                if (!load_all_complaints(complaints, &count) || count == 0) {
+                    printf("\nNo complaints found to assign.\n");
+                    break;
+                }
+
+                int id, found = 0;
+                printf("\nEnter Complaint ID to assign: ");
+                if (scanf("%d", &id) != 1) {
+                    while (getchar() != '\n');
+                    printf("Invalid ID input.\n");
+                    break;
+                }
+
+                for (int i = 0; i < count; i++) {
+                    if (complaints[i].id == id) {
+                        assign_Team(complaints, count, &complaints[i]);
+                        found = 1;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    printf("\nComplaint ID #%d not found.\n", id);
+                }
+                break;
+            }
+
+            case 3:
+                updateStatus();
+                break;
+
+            case 4:
+                deleteComplaint();
+                break;
+
+            case 5:
+                printf("\nLogging out from Admin Dashboard...\n");
+                break;
+
+            default:
+                printf("\nInvalid choice! Please try again.\n");
+        }
+    } while (choice != 5);
+}
 
 int admin_login() {
     char username[USERNAME_LEN], password[PASSWORD_LEN];
@@ -105,6 +177,8 @@ int admin_login() {
 
     if (login_successful) {
         printf("\n[SUCCESS] Login successful. Welcome Admin, %s!\n", username);
+
+        admin_portal();
         // Handoff to Admin Control Panel (e.g., admin_dashboard_menu();)
         return 1;
     } else {
