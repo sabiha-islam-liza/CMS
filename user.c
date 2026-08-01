@@ -129,7 +129,42 @@ void force_password_reset(const char *user_id) {
     printf("\n[SUCCESS] Password updated successfully!");
     printf("\nPlease use your new password for all future logins.\n");
 }
+void user_dashboard(const char *logged_in_user) {
+    int choice;
 
+    do {
+        printf("\n========================================\n");
+        printf("   WELCOME, %s\n", logged_in_user);
+        printf("========================================\n");
+        printf("1. File a Complaint\n");
+        printf("2. View My Complaints\n");
+        printf("3. Logout\n");
+
+        printf("Enter Choice: ");
+        if (scanf("%d", &choice) != 1) {
+            while (getchar() != '\n'); // Clear buffer on invalid input
+            continue;
+        }
+
+        switch (choice) {
+            case 1:
+                FileComplaint(logged_in_user);
+                break;
+
+            case 2:
+                viewComplaints(logged_in_user);
+                break;
+
+            case 3:
+                printf("\nLogging out... Returning to portal.\n");
+                break;
+
+            default:
+                printf("Invalid Choice!\n");
+        }
+
+    } while (choice != 3);
+}
 void user_login() {
     char input_id[ID_LEN], input_pass[PASS_LEN];
     char file_id[ID_LEN], file_hash[65];
@@ -167,6 +202,13 @@ void user_login() {
             force_password_reset(input_id);
         }
 
+        // Pass authenticated ID to user_dashboard
+        user_dashboard(input_id);
+    } else {
+        printf("\nInvalid Registration ID or password. Please try again.\n");
+    }
+}
+user_dashboard(input_username);
         // Handoff: Pass authenticated 'input_id' directly to user complaint module
         // userComplaintPortal(input_id);
     } else {
