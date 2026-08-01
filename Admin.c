@@ -1,113 +1,146 @@
-#include<stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include "md5.h"        // External MD5 library
 #include "complaint.h"
-#define setup_key "syntexerror"
 
-void adminregister()
-{
+#define SETUP_KEY "syntexerror"
+#define ADMIN_DB "admin.txt"
+#define USERNAME_LEN 50
+#define PASSWORD_LEN 50
+#define HASH_LEN 33
+
+/* Helper wrapper for MD5 hashing */
+static void get_admin_md5(const char *input, char *output_hash) {
+    unsigned char digest[16];
+    MD5_CTX ctx;
+
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, input, strlen(input));
+    MD5_Final(digest, &ctx);
+
+    for (int i = 0; i < 16; i++) {
+        sprintf(output_hash + (i * 2), "%02x", digest[i]);
+    }
+    output_hash[32] = '\0';
+}
+
+
+void adminregister() {
     char key[20];
-    printf("Enter the setup key to register as admin: ");
-    scanf("%s", key);
-    if (strcmp(key, setup_key) != 0)
-    {
-        printf("Invalid setup key.\n");
+    
+    printf("\nEnter the setup key to register as admin: ");
+    scanf("%19s", key);
+
+    if (strcmp(key, SETUP_KEY) != 0) {
+        printf("[ERROR] Invalid setup key.\n");
         return;
     }
-    else
-    {
-        printf("\n Create a Username: ");
-        char file_username[50];
-        scanf ("%s" , file_username);
 
-        printf("\n Create a password: ");
-        char file_password[50];
-        scanf("%s", file_password);
+    char file_username[USERNAME_LEN];
+    char file_password[PASSWORD_LEN], confirm_pass[PASSWORD_LEN];
+    char hashed_password[HASH_LEN];
 
-        printf("Confirm your password: ");
-        char confirm_pass[50];
-        scanf("%s", confirm_pass);
+    printf("\nCreate a Username: ");
+    scanf("%49s", file_username);
 
-        if (strcmp(file_password, confirm_pass) != 0)
-        {
-            printf ("\n Password didn't match. Please try again.\n");
-            return;
+    printf("Create a password: ");
+    scanf("%49s", file_password);
+
+    printf("Confirm your password: ");
+    scanf("%49s", confirm_pass);
+
+    if (strcmp(file_password, confirm_pass) != 0) {
+        printf("\n[ERROR] Passwords didn't match. Please try again.\n");
+        return;
+    }
+
+    // Hash the admin password before storing
+    get_admin_md5(file_password, hashed_password);
+
+    FILE *file = fopen(ADMIN_DB, "a");
+    if (!file) {
+        printf("\n[ERROR] Could not open database file.\n");
+        return;
+    }
+
+    // Write: USERNAME HASHED_PASSWORD
+    fprintf(file, "%s %s\n", file_username, hashed_password);
+    fclose(file);
+
+    printf("\n[SUCCESS] Admin registered successfully.\n");
+}
+
+
+int admin_login() {
+    char username[USERNAME_LEN], password[PASSWORD_LEN];
+    char input_hash[HASH_LEN];
+    char file_username[USERNAME_LEN], file_hash[HASH_LEN];
+
+    FILE *fp = fopen(ADMIN_DB, "r");
+    
+    // FIX #1: Check if file exists BEFORE attempting to read from it
+    if (fp == NULL) {
+        printf("\n[ERROR] No admin registered yet. Please register first.\n");
+        return 0;
+    }
+
+    printf("\nEnter your username: ");
+    scanf("%49s", username);
+    printf("Enter your password: ");
+    scanf("%49s", password);
+
+    get_admin_md5(password, input_hash);
+
+    int login_successful = 0;
+
+    // FIX #2: Loop through file to support multiple admin accounts
+    while (fscanf(fp, "%s %s", file_username, file_hash) == 2) {
+        if (strcmp(username, file_username) == 0 && strcmp(input_hash, file_hash) == 0) {
+            login_successful = 1;
+            break;
         }
-         else
-         {
-            
-            FILE *file = fopen("admin.txt", "a");
-            
-            fprintf(file, "%s\n%s\n", file_username, file_password);
-            fclose(file);
-            printf("Admin registered successfully.\n");
-         }
-        
-         
+    }
+    fclose(fp);
 
+    if (login_successful) {
+        printf("\n[SUCCESS] Login successful. Welcome Admin, %s!\n", username);
+        // Handoff to Admin Control Panel (e.g., admin_dashboard_menu();)
+        return 1;
+    } else {
+        printf("\n[ERROR] Invalid username or password.\n");
+        return 0;
     }
 }
-int admin_login()
-        {
-            char username [50], password[50];
-            char file_username[50], file_password[50];
-            FILE *fp = fopen("admin.txt", "r");
-            fscanf(fp, "%s\n%s", file_username, file_password);
-            
-            if (fp == NULL)
-            {
-                printf("\nNo admin registered yet.\n");
-                return 0;
-            }
 
-            else 
-            {
-                printf ("\nEnter your username: ");
-                scanf ("%s", username);
-                printf ("\n Enter your password: ");
-                scanf ("%s" ,  password);
-                if (strcmp(username, file_username) == 0 && strcmp(password, file_password) == 0)
-                {
-                    printf("\nLogin successful.\n");
-                    return 1;
-                }
-                else
-                {
-                    printf("\nInvalid username or password.\n");
-                    return 0;
-                }
-            }
 
-        }
-        
-void Admin()
-{
+void Admin() {
     int choice;
-    
-  
-do {
-    printf("------Admin Panel------\n");
-    
-    printf("1.Admin register.\n");
-    printf ("2. Admin login.\n");
-    printf ("3.Exit\n");
-    printf ("Enter your choice: ");
-    scanf("%d", &choice);
-    switch (choice)
-    {
-        case 1:
-            adminregister();
-            break;
-        case 2:
-            admin_login();
-            break;
-        case 3:
-            printf("Exiting...\n");
-            break;
-        default:
-            printf("Invalid choice. Please try again.\n");
-    }
 
-  } 
-while(choice != 3); 
+    do {
+        printf("\n------ Admin Panel ------\n");
+        printf("1. Admin register\n");
+        printf("2. Admin login\n");
+        printf("0. Back to Main Menu\n");
+        printf("Enter your choice: ");
 
+        if (scanf("%d", &choice) != 1) {
+            while (getchar() != '\n'); // Clear invalid input buffer
+            choice = -1;
+        }
+
+        switch (choice) {
+            case 1:
+                adminregister();
+                break;
+            case 2:
+                admin_login();
+                break;
+            case 0:
+                printf("\nExiting Admin Panel...\n");
+                break;
+            default:
+                printf("\nInvalid choice. Please try again.\n");
+        }
+    } while (choice != 0);
 }
