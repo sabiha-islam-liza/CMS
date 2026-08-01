@@ -138,7 +138,8 @@ void user_dashboard(const char *logged_in_user) {
         printf("========================================\n");
         printf("1. File a Complaint\n");
         printf("2. View My Complaints\n");
-        printf("3. Logout\n");
+        printf ("3. Frgot Password\n");
+        printf("4. Logout\n");
 
         printf("Enter Choice: ");
         if (scanf("%d", &choice) != 1) {
@@ -155,7 +156,10 @@ void user_dashboard(const char *logged_in_user) {
                 viewComplaints(logged_in_user);
                 break;
 
-            case 3:
+            case 3 :
+                ForgotPassword();
+            break;
+            case 4:
                 printf("\nLogging out... Returning to portal.\n");
                 break;
 
@@ -163,7 +167,7 @@ void user_dashboard(const char *logged_in_user) {
                 printf("Invalid Choice!\n");
         }
 
-    } while (choice != 3);
+    } while (choice != 4);
 }
 void user_login() {
     char input_id[ID_LEN], input_pass[PASS_LEN];
