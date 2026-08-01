@@ -7,63 +7,31 @@
 
 /* Load all complaints from file */
 
-int loadComplaints(Complaint complaints[])
-{
-    FILE *fp;
-
-    int count = 0;
-
-    fp = fopen(FILE_NAME, "r");
-
-    if(fp == NULL)
-    {
+int loadComplaints(Complaint complaints[]) {
+    FILE *fp = fopen(FILE_NAME, "r");
+    if (fp == NULL) {
         printf("\nNo complaints found.\n");
         return 0;
     }
 
-    while(1)
-    {
-        Complaint c;
+    int count = 0;
 
-        if(fscanf(fp,"%d\n",&c.id) != 1)
-        {
-            break;
-        }
-
-        fgets(c.category,sizeof(c.category),fp);
-        fgets(c.description,sizeof(c.description),fp);
-        fgets(c.priority,sizeof(c.priority),fp);
-        fgets(c.status,sizeof(c.status),fp);
-        fgets(c.date,sizeof(c.date),fp);
-        fgets(c.assignedTeam,sizeof(c.assignedTeam),fp);
-
-        /* Remove newline */
-
-        c.category[strcspn(c.category,"\n")] = '\0';
-        c.description[strcspn(c.description,"\n")] = '\0';
-        c.priority[strcspn(c.priority,"\n")] = '\0';
-        c.status[strcspn(c.status,"\n")] = '\0';
-        c.date[strcspn(c.date,"\n")] = '\0';
-        c.assignedTeam[strcspn(c.assignedTeam,"\n")] = '\0';
-
-        complaints[count] = c;
+    // Read single-line CSV records until EOF or MAX capacity reached
+    while (count < MAX && fscanf(fp, "%d,%49[^,],%49[^,],%99[^,],%19[^,],%19[^,],%19[^,],%49[^\n]\n",
+                                 &complaints[count].id,
+                                 complaints[count].user,
+                                 complaints[count].category,
+                                 complaints[count].description,
+                                 complaints[count].priority,
+                                 complaints[count].status,
+                                 complaints[count].date,
+                                 complaints[count].assignedTeam) == 8) {
         count++;
-
-        if(count >= MAX)
-        {
-            break;
-        }
-
-        /* Skip blank line between complaints */
-
-        fscanf(fp,"\n");
     }
 
     fclose(fp);
-
     return count;
 }
-
 void printComplaint(Complaint c)
 {
     printf("\n==============================\n");
