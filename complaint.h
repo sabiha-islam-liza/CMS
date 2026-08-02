@@ -4,6 +4,7 @@
 typedef struct
 {
     int id;
+    char user[50];
     char category[50];
     char description[200];
     char priority[20];
