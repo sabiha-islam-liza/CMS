@@ -1,5 +1,10 @@
 #ifndef COMPLAINT_H
 #define COMPLAINT_H
+#define FILE_NAME "complaints.csv"
+#define MAX 100
+#define ID_LEN 50
+#define PASS_LEN 50
+#define HASH_LEN 65
 //structure
 
 typedef struct {
