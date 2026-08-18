@@ -16,8 +16,27 @@ typedef struct {
     int rating;
 } Complaint;
 
+//252-35-468
 int generateComplaintID();
 void FileComplaint(const char *logged_in_user);
 
+
+//Done by Farhana Yeasmin (252-35-532)
+int load_all_complaints(Complaint complaints[], int *count);
+int save_complaints(Complaint complaints[], int count);
+void viewAllComplaints();
+void viewComplaintByID();
+void viewComplaintsByStatus();
+void viewComplaintsByDate();
+void viewComplaintsByPriority();
+void viewDepartmentComplaints(const char *categoryFilter);
+void viewComplaintsMenu();
+void deleteComplaint();
+
+//Done by Liza (252-35-485)
+void view_user_punishments(const char *logged_in_user);
+void viewComplaints(const char *logged_in_user);  // user's portal view , they can see the complaints filed by them or their account
+void viewAccusedComplaints(const char *logged_in_user); // the accused person can see the complaint filed against him
+void viewComplaintsByAssignedTeam(const char *team_name);
 
 #endif
