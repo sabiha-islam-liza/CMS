@@ -43,5 +43,5 @@ void view_user_punishments(const char *logged_in_user);
 void viewComplaints(const char *logged_in_user);  // user's portal view , they can see the complaints filed by them or their account
 void viewAccusedComplaints(const char *logged_in_user); // the accused person can see the complaint filed against him
 void viewComplaintsByAssignedTeam(const char *team_name);
-
+void set_win_color(unsigned short color);
 #endif
