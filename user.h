@@ -5,6 +5,16 @@
 #define RECOVERY_FILE "user_recovery.txt"
 #define PUNISHMENT_FILE "punishments.txt"
 // Liza (252-35-485)
+
+void notify_general_admin(int complaint_id, const char *category, const char *user_id);
+void notify_assigned_team(const char *teamName, int complaintID, const char *status);
+void notify_accused_person_updated(const char *targetUser, int complaintId, const char *category);
+void trigger_accused_popup_on_login(const char *logged_in_user);
+void notify_grievance_committee(int complaint_id, const char *user_id);
+void notify_filing_user(const char *user_id, int complaint_id, const char *category);
+
+void check_user_notifications(const char *username);
+void check_and_alert_accused(const char *username);
 void apply_for_grievance(const char *logged_in_user);
 int is_id_registered(const char *user_id);
 void user_register();
