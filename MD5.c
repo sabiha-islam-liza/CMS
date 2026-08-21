@@ -1,6 +1,8 @@
+
 #include "MD5.h"
 #include <stdio.h>
 #include <string.h>
+#define HASH_LEN 65   // 32 hex chars + null terminator
 
 #define F(x, y, z) (((x) & (y)) | ((~x) & (z)))
 #define G(x, y, z) (((x) & (z)) | ((y) & (~z)))
