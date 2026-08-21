@@ -1,5 +1,5 @@
 #include "admin.h"
-#include "complaint.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -276,6 +276,197 @@ void update_complaint_status_by_admin(const char *admin_name) {
     }
 }
 
+void updateStatus(const char *team_name)
+{
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0)
+    {
+        printf("\n[!] No complaints found.\n");
+        return;
+    }
+
+    printf("\n================ %s - UPDATE STATUS ================\n",
+           team_name);
+
+    int team_count = 0;
+
+    /* Show complaints assigned to this team */
+    for (int i = 0; i < count; i++)
+    {
+        if (strcmp(complaints[i].assignedTeam, team_name) == 0)
+        {
+            printf("\nComplaint ID : %d", complaints[i].id);
+            printf("\nCategory     : %s", complaints[i].category);
+            printf("\nFiled By     : %s", complaints[i].user);
+            printf("\nStatus       : %s", complaints[i].status);
+            printf("\n---------------------------------------------\n");
+
+            team_count++;
+        }
+    }
+
+    if (team_count == 0)
+    {
+        printf("\n[!] No complaints are assigned to %s.\n", team_name);
+        return;
+    }
+
+    int id;
+
+    printf("\nEnter Complaint ID to update: ");
+
+    if (scanf("%d", &id) != 1)
+    {
+        while (getchar() != '\n');
+        printf("[!] Invalid Complaint ID.\n");
+        return;
+    }
+
+    /* Find the complaint belonging to this team */
+    int found = -1;
+
+    for (int i = 0; i < count; i++)
+    {
+        if (complaints[i].id == id &&
+            strcmp(complaints[i].assignedTeam, team_name) == 0)
+        {
+            found = i;
+            break;
+        }
+    }
+
+    if (found == -1)
+    {
+        printf("\n[!] Complaint not found or this complaint is not assigned to %s.\n",
+               team_name);
+        return;
+    }
+
+    printf("\nCurrent Status: %s\n", complaints[found].status);
+
+    printf("\n========== UPDATE STATUS ==========\n");
+    printf("1. In Progress\n");
+    printf("2. Resolved\n");
+    printf("3. Closed\n");
+    printf("Enter choice: ");
+
+    int choice;
+
+    if (scanf("%d", &choice) != 1)
+    {
+        while (getchar() != '\n');
+        printf("[!] Invalid choice.\n");
+        return;
+    }
+
+    switch (choice)
+    {
+        case 1:
+            strcpy(complaints[found].status, "In Progress");
+            break;
+
+        case 2:
+            strcpy(complaints[found].status, "Resolved");
+            break;
+
+        case 3:
+            strcpy(complaints[found].status, "Closed");
+            break;
+
+        default:
+            printf("\n[!] Invalid choice. Status not changed.\n");
+            return;
+    }
+
+    /* Save updated status */
+    if (!save_complaints(complaints, count))
+    {
+        printf("\n[!] Failed to save complaint status.\n");
+        return;
+    }
+
+    printf("\n[SUCCESS] Complaint #%d status updated to '%s'.\n",
+           complaints[found].id,
+           complaints[found].status);
+
+    /* Notify the user */
+    char msg[256];
+
+    snprintf(msg,
+             sizeof(msg),
+             "Your complaint #%d status has been updated to: %s",
+             complaints[found].id,
+             complaints[found].status);
+
+    send_notification(
+        complaints[found].user,
+        complaints[found].id,
+        msg
+    );
+}
+void deleteComplaint() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    // Load existing complaints from file
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found to delete.\n");
+        return;
+    }
+
+    int id;
+    printf("\nEnter Complaint ID to delete: ");
+    if (scanf("%d", &id) != 1) {
+        while (getchar() != '\n'); // Clear invalid input buffer
+        printf("\n[!] Invalid input.\n");
+        return;
+    }
+
+    int found_index = -1;
+    for (int i = 0; i < count; i++) {
+        if (complaints[i].id == id) {
+            found_index = i;
+            break;
+        }
+    }
+
+    if (found_index == -1) {
+        printf("\n[!] Complaint ID #%d not found.\n", id);
+        return;
+    }
+
+    // Display summary and ask for confirmation
+    printf("\n========== COMPLAINT TO DELETE ==========\n");
+    printf("ID          : %d\n", complaints[found_index].id);
+    printf("User        : %s\n", complaints[found_index].user);
+    printf("Category    : %s\n", complaints[found_index].category);
+    printf("Description : %s\n", complaints[found_index].description);
+    printf("Status      : %s\n", complaints[found_index].status);
+    printf("=========================================\n");
+
+    char confirm;
+    printf("Are you sure you want to permanently delete Complaint #%d? (y/n): ", id);
+    scanf(" %c", &confirm);
+
+    if (confirm != 'y' && confirm != 'Y') {
+        printf("\n[!] Deletion cancelled.\n");
+        return;
+    }
+
+    // Shift array elements left to overwrite deleted item
+    for (int i = found_index; i < count - 1; i++) {
+        complaints[i] = complaints[i + 1];
+    }
+    count--;
+
+    // Overwrite complaints.csv with updated list
+    save_complaints(complaints, count);
+
+    printf("\n[SUCCESS] Complaint #%d deleted successfully.\n", id);
+}
+
 // Dashboard for Super / Assigning Team Admin
 void assigning_team_admin_dashboard(const char *admin_name) {
 
@@ -356,6 +547,7 @@ void departmental_admin_dashboard(const char *admin_name, const char *dept_name,
         }
 
         switch (choice) {
+
             case 1: viewDepartmentComplaints(category_filter); break;
             case 2: claim_complaint(admin_name); break;
             case 3: update_complaint_status_by_admin(admin_name); break;
@@ -472,6 +664,263 @@ void sub_admin_register(int role_choice) {
         }
     }
 }
+void printComplaint(Complaint c)
+{
+    printf("\n==============================\n");
+    printf("Complaint ID : %d\n", c.id);
+    printf("Category     : %s\n", c.category);
+    printf("Description  : %s\n", c.description);
+    printf("Priority     : %s\n", c.priority);
+    printf("Status       : %s\n", c.status);
+    printf("Date         : %s\n", c.date);
+    printf("Assigned Team: %s\n", c.assignedTeam);
+    printf("==============================\n");
+}
+void viewAllComplaints() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    int success = load_all_complaints(complaints, &count);
+
+    if (!success || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        printComplaint(complaints[i]);
+    }
+
+    printf("\nTotal Complaints: %d\n", count);
+}
+
+void viewComplaintsByAssignedTeam(const char *team_name) {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+#ifdef _WIN32
+        if (_stricmp(complaints[i].assignedTeam, team_name) == 0) {
+#else
+        if (case_insensitive_compare(complaints[i].assignedTeam, team_name) == 0) {
+#endif
+            printComplaint(complaints[i]);
+            found++;
+        }
+    }
+
+    if (!found) {
+        printf("\nNo complaints assigned to %s.\n", team_name);
+    } else {
+        printf("\nTotal complaints assigned to %s: %d\n", team_name, found);
+    }
+}
+void viewComplaintByID() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    int id, found = 0;
+    printf("Enter Complaint ID: ");
+    scanf("%d", &id);
+
+    for (int i = 0; i < count; i++) {
+        if (complaints[i].id == id) {
+            printComplaint(complaints[i]);
+            found = 1;
+            break;
+        }
+    }
+
+    if (!found) printf("\nComplaint not found.\n");
+}
+
+void viewComplaintsByStatus() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    char status[20];
+    printf("Enter Status (Open/In Progress/Resolved/Closed): ");
+    getchar();
+    fgets(status, sizeof(status), stdin);
+    status[strcspn(status, "\n")] = '\0';
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (case_insensitive_compare(complaints[i].status, status) == 0) {
+            printComplaint(complaints[i]);
+            found = 1;
+        }
+    }
+
+    if (!found) printf("\nNo complaints found with status '%s'.\n", status);
+}
+
+void viewComplaintsByDate() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    Complaint temp;
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (strcmp(complaints[j].date, complaints[j + 1].date) > 0) {
+                temp = complaints[j];
+                complaints[j] = complaints[j + 1];
+                complaints[j + 1] = temp;
+            }
+        }
+    }
+
+    printf("\n===== Complaints Sorted by Date =====\n");
+    for (int i = 0; i < count; i++) {
+        printComplaint(complaints[i]);
+    }
+}
+#include <ctype.h>
+
+// Cross-platform case-insensitive priority lookup
+int getPriorityValue(const char *priority) {
+    if (!priority) return 0;
+
+    // Use case-insensitive comparison (handles "High", "high", "HIGH")
+#ifdef _WIN32
+    if (_stricmp(priority, "High") == 0) return 3;
+    if (_stricmp(priority, "Medium") == 0) return 2;
+    if (_stricmp(priority, "Low") == 0) return 1;
+#else
+    if (case_insensitive_compare(priority, "High") == 0) return 3;
+    if (case_insensitive_compare(priority, "Medium") == 0) return 2;
+    if (case_insensitive_compare(priority, "Low") == 0) return 1;
+#endif
+
+    return 0; // Default fallback for unassigned/unknown priorities
+}
+
+void viewComplaintsByPriority() {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    // Fix: Pass &count to populate total complaints, do NOT overwrite count with return status
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    // Bubble sort complaints in descending order of priority value (3 -> 2 -> 1 -> 0)
+    Complaint temp;
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (getPriorityValue(complaints[j].priority) < getPriorityValue(complaints[j + 1].priority)) {
+                temp = complaints[j];
+                complaints[j] = complaints[j + 1];
+                complaints[j + 1] = temp;
+            }
+        }
+    }
+
+    printf("\n===== Complaints Sorted by Priority =====\n");
+    for (int i = 0; i < count; i++) {
+        printComplaint(complaints[i]);
+    }
+    printf("Total Complaints: %d\n", count);
+}
+
+void viewDepartmentComplaints(const char *categoryFilter) {
+    Complaint complaints[MAX];
+    int count = 0;
+
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\nNo complaints found.\n");
+        return;
+    }
+
+    int found = 0;
+    for (int i = 0; i < count; i++) {
+        if (strcmp(categoryFilter, "ALL") == 0 || case_insensitive_compare(complaints[i].category, categoryFilter) == 0) {
+            printComplaint(complaints[i]);
+            found++;
+        }
+    }
+
+    if (found == 0) {
+        printf("\nNo complaints found for category: %s\n", categoryFilter);
+    } else {
+        printf("\nTotal Complaints Found: %d\n", found);
+    }
+}
+
+
+
+
+void viewComplaintsMenu()
+{
+    int choice;
+
+    do
+    {
+        printf("\n========== View Complaints ==========\n");
+        printf("1. View All Complaints\n");
+        printf("2. Search Complaint by ID\n");
+        printf("3. View Complaints by Status\n");
+        printf("4. Sort by Date\n");
+        printf("5. Sort by Priority\n");
+        printf("0. Back\n");
+
+        printf("\nEnter your choice: ");
+        scanf("%d",&choice);
+
+        switch(choice)
+        {
+            case 1:
+                viewAllComplaints();
+                break;
+
+            case 2:
+                viewComplaintByID();
+                break;
+
+            case 3:
+                viewComplaintsByStatus();
+                break;
+
+            case 4:
+                viewComplaintsByDate();
+                break;
+
+            case 5:
+                viewComplaintsByPriority();
+                break;
+
+            case 0:
+                printf("Returning...\n");
+                break;
+
+            default:
+                printf("Invalid Choice!\n");
+        }
+
+    }while(choice != 0);
+}
 
 
 // Role Menu Handler
@@ -524,7 +973,7 @@ void AdminPortalMenu() {
     else if (strcmp(key, ExamAdmin_Key) == 0) {
         handle_sub_admin_role(2, "Exam Office Admin", "Exam");
     }
-    else if (strcmp(key, LibraryAdmin_key) == 0) {
+    else if (strcmp(key, LibraryAdmin_Key) == 0) {
         handle_sub_admin_role(3, "Library Admin", "Library");
     }
     else if (strcmp(key, Accounts_Key) == 0) {
