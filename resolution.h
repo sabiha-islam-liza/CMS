@@ -1,38 +1,20 @@
-#ifndef RESOLUTION_TEAM_H
-#define RESOLUTION_TEAM_H
+
+#ifndef RESOLUTION_H
+#define RESOLUTION_H
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-/* Macros and constants */
-#ifndef HASH_LEN
-#define HASH_LEN 65
-#endif
-
-#ifndef MAX
-#define MAX 100
-#endif
+#include "user.h"
+#include "MD5.h"
+#include "admin.h"
 
 #ifndef PUNISHMENT_FILE
 #define PUNISHMENT_FILE "punishments.txt"
 #endif
 
-/* Standardized structures (Ensure these match your global CMS structs) */
-typedef struct {
-    int id;
-    char user[50];
-    char targetUser[50];
-    char category[50];
-    char description[200];
-    char priority[20];
-    char status[20];
-    char date[20];
-    char assignedTeam[50];
-    char assignedAdmin[50];
-    int rating;
-} Complaint;
+
 
 /* External Helper Function Dependencies (Implemented in main/core module) */
 extern void get_user_md5(const char *input, char *output_hash);
