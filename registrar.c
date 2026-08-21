@@ -1,7 +1,8 @@
+
 #include "registrar.h"
 
 // Define the setup key
-const char *Registrar_Key = "REG123";  
+const char *Registrar_Key = "REG123";
 
 /* ---------- Helper Functions ---------- */
 void read_input(char *buffer, int size, const char *prompt) {
