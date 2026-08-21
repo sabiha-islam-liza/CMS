@@ -16,22 +16,22 @@ int main() {
         printf("Enter choice: ");
 
         if (scanf("%d", &choice) != 1) {
-            while (getchar() != '\n');
+            while (getchar() != '\n'); // clear invalid input
             continue;
         }
 
         switch (choice) {
             case 1:
-                User(); // User dashboard (File complaint, view status, rate resolution)
+                User();              // User dashboard
                 break;
             case 2:
-                AdminPortalMenu();
+                AdminPortalMenu();   // Admin menu
                 break;
             case 3:
-                ResolutionTeam();
+                ResolutionTeam();    // Resolution team menu
                 break;
             case 4:
-                Registrar();
+                Registrar();         // Registrar menu
                 break;
             case 5:
                 printf("Exiting application.\n");
@@ -43,3 +43,4 @@ int main() {
 
     return 0;
 }
+
