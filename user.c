@@ -1,6 +1,5 @@
 #include "user.h"
 #include "MD5.h"
-#include "complaint.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +11,75 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include "admin.h"
+
+#define MAX 100
+#define ID_LEN 50
+#define PASS_LEN 50
+
+
+
+int load_all_complaints(Complaint complaints[], int *count) {
+    FILE *fp = fopen("complaints.csv", "r");
+    if (!fp) return 0;
+
+    *count = 0;
+    while (fscanf(fp, "%d,%49[^,],%49[^,],%49[^,],%199[^,],%19[^,],%19[^,],%19[^,],%49[^,],%49[^,],%d\n",
+                  &complaints[*count].id,
+                  complaints[*count].user,
+                  complaints[*count].targetUser,
+                  complaints[*count].category,
+                  complaints[*count].description,
+                  complaints[*count].priority,
+                  complaints[*count].status,
+                  complaints[*count].date,
+                  complaints[*count].assignedTeam,
+                  complaints[*count].assignedAdmin,
+                  &complaints[*count].rating) == 11) {
+        (*count)++;
+    }
+
+    fclose(fp);
+    return 1;
+}
+int save_complaints(Complaint complaints[], int count) {
+    FILE *fp = fopen("complaints.csv", "w"); // Ensure file name matches exactly
+    if (!fp) {
+        printf("\n[!] Error opening file for writing! (Make sure complaints.csv is not open in Excel)\n");
+        return 0; // Failure
+    }
+
+    for (int i = 0; i < count; i++) {
+        fprintf(fp, "%d,%s,%s,%s,%s,%s,%s,%s,%s,%s,%d\n",
+                complaints[i].id,
+                complaints[i].user,
+                complaints[i].targetUser,
+                complaints[i].category,
+                complaints[i].description,
+                complaints[i].priority,
+                complaints[i].status,
+                complaints[i].date,
+                complaints[i].assignedTeam,
+                complaints[i].assignedAdmin,
+                complaints[i].rating);
+    }
+
+    fclose(fp);
+    return 1; // Success
+}
+
+/* Portable case-insensitive string comparison. */
+int case_insensitive_compare(const char *a, const char *b) {
+    unsigned char ca, cb;
+    while (*a && *b) {
+        ca = (unsigned char)*a++;
+        cb = (unsigned char)*b++;
+        if (ca >= 'A' && ca <= 'Z') ca = (unsigned char)(ca + ('a' - 'A'));
+        if (cb >= 'A' && cb <= 'Z') cb = (unsigned char)(cb + ('a' - 'A'));
+        if (ca != cb) return (int)ca - (int)cb;
+    }
+    return (int)(unsigned char)*a - (int)(unsigned char)*b;
+}
 
 // Base notification logger
 void send_notification(const char *target_admin, int complaint_id, const char *msg) {
@@ -421,19 +489,7 @@ int is_id_registered(const char *user_id) {
     fclose(fp);
     return 0;
 }
-void get_user_md5(const char *input, char *output_hash) {
-    unsigned char digest[16];
-    MD5_CTX_INLINE ctx;
 
-    MD5Init_Inline(&ctx);
-    MD5Update_Inline(&ctx, (const unsigned char*)input, strlen(input));
-    MD5Final_Inline(digest, &ctx);
-
-    for (int i = 0; i < 16; i++) {
-        sprintf(output_hash + (i * 2), "%02x", digest[i]);
-    }
-    output_hash[32] = '\0';
-}
 
 void user_register() {
     char user_id[ID_LEN];
@@ -1012,7 +1068,6 @@ void user_login() {
 
     user_dashboard(input_id);
 }
-
 void User()
 {
     int choice;
