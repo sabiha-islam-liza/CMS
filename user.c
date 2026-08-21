@@ -6,18 +6,21 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <time.h>
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
-#define DB_FILE "user.txt"
-#define ID_LEN 50
-#define PASS_LEN 50
-#define HASH_LEN 65.
-#define RATINGS_FILE "admin_ratings.txt"
-#define FILE_NAME "complaints.csv"
-#define MAX 100
+
+// Base notification logger
+void send_notification(const char *target_admin, int complaint_id, const char *msg) {
+    FILE *fp = fopen(NOTIF_FILE, "a");
+    if (!fp) return;
+    fprintf(fp, "%s|%d|%s|0\n", target_admin, complaint_id, msg);
+    fclose(fp);
+}
+
 // 1. Notify General Admin
 void notify_general_admin(int complaint_id, const char *category, const char *user_id) {
     char message[256];
@@ -48,37 +51,60 @@ char alert_msg[256];
             teamName, complaintID, status);
     send_notification(teamName, complaintID, alert_msg);
 
-#ifdef _WIN32
-    char msg[256];
-    snprintf(msg, sizeof(msg), "ATTENTION: You have confidential notices or complaints filed against your Registration ID!\n\nPlease check Option 3 in your dashboard.");
-    MessageBeep(MB_ICONWARNING);
-    MessageBox(NULL, msg, "Confidential Notice Alert", MB_OK | MB_ICONWARNING);
-#endif
+}
+void notify_accused_person_updated(const char *targetUser, int complaintId, const char *category) {
+    FILE *file = fopen("accused_alerts.txt", "a");
+    if (file != NULL) {
+        // Format: ACCUSED_USER_ID|COMPLAINT_ID|CATEGORY
+        fprintf(file, "%s|%d|%s\n", targetUser, complaintId, category);
+        fclose(file);
+    }
 }
 
-// 3. Notify Accused Person (Targeted Warning Popup)
-void notify_accused_person_updated(const char *target_user, int complaint_id, const char *category) {
-    char filename[100];
-    snprintf(filename, sizeof(filename), "notice_%s.txt", target_user);
-    FILE *fp = fopen(filename, "a");
-    if (fp) {
-        time_t t = time(NULL);
-        struct tm tm = *localtime(&t);
-        fprintf(fp, "[%04d-%02d-%02d] OFFICIAL NOTICE: Complaint #%d (%s) has been filed regarding your account/id.\n",
-                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, complaint_id, category);
-        fclose(fp);
+
+void trigger_accused_popup_on_login(const char *logged_in_user) {
+    FILE *file = fopen("accused_alerts.txt", "r");
+    if (file == NULL) return;
+
+    FILE *temp = fopen("temp_accused_alerts.txt", "w");
+    if (temp == NULL) {
+        fclose(file);
+        return;
     }
 
-    char alert_msg[256];
-    snprintf(alert_msg, sizeof(alert_msg), "A serious %s complaint #%d has been filed regarding your ID.", category, complaint_id);
-    send_notification(target_user, complaint_id, alert_msg);
+    char line[256];
+    int display_popup = 0;
 
-#ifdef _WIN32
-    char msg[256];
-    snprintf(msg, sizeof(msg), "ATTENTION: You have confidential notices or complaints filed against your Registration ID!\n\nPlease check Option 3 in your dashboard.");
-    MessageBeep(MB_ICONWARNING);
-    MessageBox(NULL, msg, "Confidential Notice Alert", MB_OK | MB_ICONWARNING);
-#endif
+    while (fgets(line, sizeof(line), file)) {
+        char target[50], category[50];
+        int id;
+
+        // Parse stored alert records
+        if (sscanf(line, "%49[^|]|%d|%49[^\n]", target, &id, category) == 3) {
+            if (strcmp(target, logged_in_user) == 0) {
+                display_popup = 1; // Match found for the logging-in user
+            } else {
+                fprintf(temp, "%s", line); // Keep alerts for other users
+            }
+        }
+    }
+
+    fclose(file);
+    fclose(temp);
+
+    // Overwrite alert file with remaining unread alerts
+    remove("accused_alerts.txt");
+    rename("temp_accused_alerts.txt", "accused_alerts.txt");
+
+    // Pop-up triggers HERE on the accused person's screen upon login
+    if (display_popup) {
+        MessageBoxA(
+            NULL,
+            "ATTENTION: You have confidential notices or complaints filed regarding your account!",
+            "Confidential Notice Alert",
+            MB_OK | MB_ICONWARNING
+        );
+    }
 }
 
 // 4. Notify Grievance Committee
@@ -236,7 +262,7 @@ void apply_for_grievance(const char *logged_in_user) {
 
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
-    sprintf(c.date, "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    strftime(c.date, sizeof(c.date), "%Y-%m-%d", &tm);
 
     while (getchar() != '\n'); // clear buffer
     printf("\n================ APPLY FOR GRIEVANCE ================\n");
@@ -260,7 +286,6 @@ void apply_for_grievance(const char *logged_in_user) {
 
     printf("\n[SUCCESS] Grievance #%d submitted successfully and routed to Grievance Committee.\n", c.id);
 }
-
 void FileComplaint(const char *logged_in_user) {
     Complaint complaints[MAX];
     int count = 0;
@@ -282,7 +307,7 @@ void FileComplaint(const char *logged_in_user) {
 
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
-    sprintf(c.date, "%04d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+    strftime(c.date, sizeof(c.date), "%Y-%m-%d", &tm);
 
     int cat_choice;
     printf("\nSelect Complaint Category:\n");
@@ -331,10 +356,11 @@ void FileComplaint(const char *logged_in_user) {
         complaints[count] = c;
         save_complaints(complaints, count + 1);
 
+        // Targeted Person Notification (Only for Violence/Harassment)
         if (strcmp(c.targetUser, "N/A") != 0 && strcmp(c.targetUser, logged_in_user) != 0) {
             notify_accused_person_updated(c.targetUser, c.id, c.category);
         }
-        notify_assigned_team(c.assignedTeam, c.id, c.status);
+
     } else {
         if (cat_choice == 1) {
             strcpy(c.category, "Technical");
@@ -369,11 +395,14 @@ void FileComplaint(const char *logged_in_user) {
         save_complaints(complaints, count + 1);
 
         notify_general_admin(c.id, c.category, c.user);
-        notify_assigned_team(c.assignedTeam, c.id, c.status);
     }
+    notify_assigned_team(c.assignedTeam, c.id, c.status);
+
+    notify_filing_user(c.user, c.id, c.category);
 
     printf("\n[SUCCESS] %s complaint #%d submitted successfully.\n", c.category, c.id);
 }
+
 // Check if Registration ID exists in user database
 int is_id_registered(const char *user_id) {
     FILE *fp = fopen(DB_FILE, "r");
@@ -392,9 +421,6 @@ int is_id_registered(const char *user_id) {
     fclose(fp);
     return 0;
 }
-
-
-// Helper function to convert text to MD5 hex string
 void get_user_md5(const char *input, char *output_hash) {
     unsigned char digest[16];
     MD5_CTX_INLINE ctx;
@@ -409,7 +435,6 @@ void get_user_md5(const char *input, char *output_hash) {
     output_hash[32] = '\0';
 }
 
-// Register a new user with default password set as their Registration ID
 void user_register() {
     char user_id[ID_LEN];
     char hashed_default_pass[HASH_LEN];
@@ -422,15 +447,11 @@ void user_register() {
         while (getchar() != '\n'); // Clear input buffer
         return; // Returns back to User menu
     }
-
-    // Check if the Registration ID already exists in DB_FILE
     if (is_id_registered(user_id)) {
         printf("\n[!] Error: Registration ID '%s' is already registered!\n", user_id);
         printf("Returning to menu...\n");
         return; // Returns back to User menu
     }
-
-    // Hash the default password (set to Registration ID)
     get_user_md5(user_id, hashed_default_pass);
 
     FILE *file = fopen(DB_FILE, "a");
@@ -439,8 +460,6 @@ void user_register() {
         printf("Returning to menu...\n");
         return; // Returns back to User menu
     }
-
-    // Save record format: USER_ID MD5_HASH FIRST_LOGIN_FLAG (1)
     fprintf(file, "%s %s 1\n", user_id, hashed_default_pass);
     fclose(file);
 
@@ -452,7 +471,93 @@ void user_register() {
     printf("\nRegistration complete. Returning to main menu...\n");
     return; // Returns back to User menu
 }
-// Enforce new password on first login
+/* Password recovery support. Recovery records are stored separately so the existing user.txt format remains compatible. */
+int recovery_code_exists(const char *user_id) {
+    FILE *fp = fopen(RECOVERY_FILE, "r");
+    if (!fp) return 0;
+    char file_id[ID_LEN], recovery_hash[HASH_LEN];
+    while (fscanf(fp, "%49s %64s", file_id, recovery_hash) == 2) {
+        if (strcmp(file_id, user_id) == 0) { fclose(fp); return 1; }
+    }
+    fclose(fp);
+    return 0;
+}
+
+int save_recovery_code(const char *user_id, const char *recovery_code) {
+    char new_hash[HASH_LEN], file_id[ID_LEN], file_hash[HASH_LEN];
+    int found = 0;
+    get_user_md5(recovery_code, new_hash);
+    FILE *fp = fopen(RECOVERY_FILE, "r");
+    FILE *temp = fopen("recovery_temp.txt", "w");
+    if (!temp) { if (fp) fclose(fp); return 0; }
+    if (fp) {
+        while (fscanf(fp, "%49s %64s", file_id, file_hash) == 2) {
+            if (strcmp(file_id, user_id) == 0) { fprintf(temp, "%s %s\n", file_id, new_hash); found = 1; }
+            else fprintf(temp, "%s %s\n", file_id, file_hash);
+        }
+        fclose(fp);
+    }
+    if (!found) fprintf(temp, "%s %s\n", user_id, new_hash);
+    fclose(temp);
+    remove(RECOVERY_FILE);
+    if (rename("recovery_temp.txt", RECOVERY_FILE) != 0) { remove("recovery_temp.txt"); return 0; }
+    return 1;
+}
+
+void set_recovery_code(const char *user_id) {
+    char recovery_code[PASS_LEN], confirm_code[PASS_LEN];
+    printf("\n================ RECOVERY CODE SETUP ================\n");
+    printf("Registration ID: %s\n", user_id);
+    printf("Create a recovery code (do not use your password): ");
+    scanf("%49s", recovery_code);
+    printf("Confirm recovery code: ");
+    scanf("%49s", confirm_code);
+    if (strcmp(recovery_code, confirm_code) != 0) { printf("\n[!] Recovery codes do not match. Nothing was changed.\n"); return; }
+    if (strlen(recovery_code) < 4) { printf("\n[!] Recovery code must contain at least 4 characters.\n"); return; }
+    if (save_recovery_code(user_id, recovery_code)) printf("\n[SUCCESS] Recovery code saved successfully.\n");
+    else printf("\n[!] Unable to save the recovery code.\n");
+}
+
+void forgot_password() {
+    char user_id[ID_LEN], recovery_code[PASS_LEN], entered_hash[HASH_LEN];
+    char file_id[ID_LEN], recovery_hash[HASH_LEN];
+    int recovery_found = 0, recovery_valid = 0;
+    printf("\n================ FORGOT PASSWORD ================\n");
+    printf("Enter your Registration ID: "); scanf("%49s", user_id);
+    if (!is_id_registered(user_id)) { printf("\n[!] Registration ID not found.\n"); return; }
+    FILE *rfp = fopen(RECOVERY_FILE, "r");
+    if (!rfp) { printf("\n[!] No recovery code is configured for this account.\n"); printf("Please log in normally and use 'Set/Change Recovery Code' first.\n"); return; }
+    printf("Enter your recovery code: "); scanf("%49s", recovery_code); get_user_md5(recovery_code, entered_hash);
+    while (fscanf(rfp, "%49s %64s", file_id, recovery_hash) == 2) {
+        if (strcmp(file_id, user_id) == 0) { recovery_found = 1; if (strcmp(entered_hash, recovery_hash) == 0) recovery_valid = 1; break; }
+    }
+    fclose(rfp);
+    if (!recovery_found) { printf("\n[!] No recovery code is configured for this account.\n"); return; }
+    if (!recovery_valid) { printf("\n[!] Incorrect recovery code. Password was NOT changed.\n"); return; }
+
+    char new_pass[PASS_LEN], confirm_pass[PASS_LEN], new_hash[HASH_LEN];
+    while (1) {
+        printf("\nEnter your new password: "); scanf("%49s", new_pass);
+        printf("Confirm your new password: "); scanf("%49s", confirm_pass);
+        if (strcmp(new_pass, confirm_pass) != 0) { printf("[!] Passwords do not match. Please try again.\n"); continue; }
+        if (strlen(new_pass) < 6) { printf("[!] Password must contain at least 6 characters.\n"); continue; }
+        if (strcmp(new_pass, user_id) == 0) { printf("[!] Password cannot be the same as your Registration ID.\n"); continue; }
+        break;
+    }
+    get_user_md5(new_pass, new_hash);
+    FILE *fp = fopen(DB_FILE, "r"), *temp = fopen("password_reset_temp.txt", "w");
+    if (!fp || !temp) { printf("\n[!] Error updating password. Please try again.\n"); if (fp) fclose(fp); if (temp) fclose(temp); remove("password_reset_temp.txt"); return; }
+    char db_id[ID_LEN], db_hash[HASH_LEN]; int first_login_flag, password_updated = 0;
+    while (fscanf(fp, "%49s %64s %d", db_id, db_hash, &first_login_flag) == 3) {
+        if (strcmp(db_id, user_id) == 0) { fprintf(temp, "%s %s 0\n", db_id, new_hash); password_updated = 1; }
+        else fprintf(temp, "%s %s %d\n", db_id, db_hash, first_login_flag);
+    }
+    fclose(fp); fclose(temp);
+    if (!password_updated) { remove("password_reset_temp.txt"); printf("\n[!] Unable to update the account.\n"); return; }
+    remove(DB_FILE);
+    if (rename("password_reset_temp.txt", DB_FILE) != 0) { remove("password_reset_temp.txt"); printf("\n[!] Unable to replace the user database.\n"); return; }
+    printf("\n[SUCCESS] Password reset successfully!\nYou can now log in using your new password.\n");
+}
 void force_password_reset(const char *user_id) {
     char new_pass[PASS_LEN], confirm_pass[PASS_LEN];
     char new_hash[HASH_LEN];
@@ -474,7 +579,6 @@ void force_password_reset(const char *user_id) {
         printf("\n[!] Passwords do not match. Please try again.\n");
     }
 
-    // Generate MD5 hash for the new password
     get_user_md5(new_pass, new_hash);
 
     FILE *fp = fopen(DB_FILE, "r");
@@ -509,7 +613,6 @@ void force_password_reset(const char *user_id) {
     printf("\nPlease use your new password for all future logins.\n");
 }
 
-#define PUNISHMENT_FILE "punishments.txt"
 
 void view_user_punishments(const char *logged_in_user) {
     FILE *fp = fopen(PUNISHMENT_FILE, "r");
@@ -533,7 +636,6 @@ void view_user_punishments(const char *logged_in_user) {
 
     printf("\n================ OFFICIAL RESOLUTION & DISCIPLINARY NOTICES ================\n");
 
-    // File Format: ComplaintID|TargetUser|ActionType|Reason|Date
     while (fscanf(fp, "%d|%49[^|]|%49[^|]|%255[^|]|%19[^\n]\n",
                   &record.complaint_id,
                   record.target_user,
@@ -563,13 +665,13 @@ void view_user_punishments(const char *logged_in_user) {
     fclose(fp);
 }
 
+
 void update_admin_rating_record(const char *admin_id, int new_rating) {
     if (admin_id == NULL || strlen(admin_id) == 0 ||
         strcmp(admin_id, "Unassigned") == 0 || strcmp(admin_id, "N/A") == 0) {
         return;
     }
 
-    // Step 1: Look up the assigned admin's category/role from admin.txt
     char category[50] = "General";
     FILE *admin_fp = fopen(ADMIN_FILE, "r");
     if (admin_fp) {
@@ -590,7 +692,6 @@ void update_admin_rating_record(const char *admin_id, int new_rating) {
         fclose(admin_fp);
     }
 
-    // Step 2: Read existing records into temporary memory array
     typedef struct {
         char admin_name[50];
         char category[50];
@@ -605,7 +706,6 @@ void update_admin_rating_record(const char *admin_id, int new_rating) {
 
     FILE *rfp = fopen(RATINGS_FILE, "r");
     if (rfp) {
-        // Parsing format: AdminName|Category|TotalSum|Count|AvgRating
         while (fscanf(rfp, "%49[^|]|%49[^|]|%d|%d|%f\n",
                       records[record_count].admin_name,
                       records[record_count].category,
@@ -625,7 +725,6 @@ void update_admin_rating_record(const char *admin_id, int new_rating) {
         fclose(rfp);
     }
 
-    // Step 3: Append as a new record if this is the admin's first rating
     if (!found && record_count < MAX) {
         strcpy(records[record_count].admin_name, admin_id);
         strcpy(records[record_count].category, category);
@@ -666,7 +765,7 @@ void rate_resolved_complaint(const char *logged_in_user) {
     for (int i = 0; i < count; i++) {
        // Simplify the rating eligibility check to only target Closed complaints:
 if (strcmp(complaints[i].user, logged_in_user) == 0 &&
-    strcasecmp(complaints[i].status, "Closed") == 0)
+    case_insensitive_compare(complaints[i].status, "Closed") == 0)
     // Allow user rating
  {
             printf("ID: %d | Category: %s | Handled By Admin: %s | Current Rating: %d/5\n",
@@ -713,19 +812,16 @@ if (strcmp(complaints[i].user, logged_in_user) == 0 &&
     printf("[!] Complaint ID not found or access denied.\n");
 }
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 // Helper function to set terminal text color via Windows API
 void set_win_color(unsigned short color) {
 #ifdef _WIN32
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(hConsole, color);
+#else
+    (void)color;
 #endif
 }
 
-// 1. viewComplaints: Displays complaints filed BY the user in standard formatted console output
 void viewComplaints(const char *logged_in_user) {
     Complaint complaints[MAX];
     int count = 0;
@@ -784,45 +880,41 @@ void viewComplaints(const char *logged_in_user) {
     }
 }
 
-// 2. viewAccusedComplaints: Displays complaints/notices filed AGAINST the user in formatted console output
 void viewAccusedComplaints(const char *logged_in_user) {
-    char file_name[100];
-    sprintf(file_name, "notice_%s.txt", logged_in_user);
-    FILE *fp = fopen(file_name, "r");
+    Complaint complaints[MAX];
+    int count = 0;
 
-    if (fp == NULL) {
-        set_win_color(10); // Green
-        printf("\n========================================================");
-        printf("\n [INFO] No official notices or targeted complaints against ID: %s", logged_in_user);
-        printf("\n========================================================\n");
-        set_win_color(7);
+    if (!load_all_complaints(complaints, &count) || count == 0) {
+        printf("\n[!] No complaints found in the system.\n");
         return;
     }
 
-    set_win_color(12); // Red border for warnings/accused complaints
-    printf("\n========================================================");
-    printf("\n           CONFIDENTIAL NOTICES / ACCUSATIONS          ");
-    printf("\n========================================================\n");
-    set_win_color(7);
+    printf("\n================ COMPLAINTS ACCUSED AGAINST ME ================\n");
+    int accused_count = 0;
 
-    char line[256];
-    int line_num = 1;
-    while (fgets(line, sizeof(line), fp) != NULL) {
-        printf(" %d. %s", line_num++, line);
+    for (int i = 0; i < count; i++) {
+        if (strcmp(complaints[i].targetUser, logged_in_user) == 0) {
+            printf("Complaint ID : %d\n", complaints[i].id);
+            printf("Category     : %s\n", complaints[i].category);
+            printf("Status       : %s\n", complaints[i].status);
+            printf("Assigned Team: %s\n", complaints[i].assignedTeam);
+            printf("Filed Date   : %s\n", complaints[i].date);
+            printf("Notice Detail: %s\n", complaints[i].description);
+            printf("-------------------------------------------------------------\n");
+            accused_count++;
+        }
     }
-    fclose(fp);
 
-    set_win_color(12);
-    printf("========================================================\n");
-    set_win_color(7);
+    if (accused_count == 0) {
+        printf("No active complaints or notices registered against your ID.\n");
+    } else {
+        printf("Total notices found: %d\n", accused_count);
+    }
+    printf("=============================================================\n");
 }
-
 // Updated User Dashboard without color codes
 void user_dashboard(const char *username) {
-    // 1. Checks and displays unread alerts sent to this specific user ID
     check_user_notifications(username);
-
-    // 2. Checks if file notices (notice_<username>.txt) exist for the user
     check_and_alert_accused(username);
     int choice;
     do {
@@ -833,7 +925,8 @@ void user_dashboard(const char *username) {
         printf("\n4. View Accused Complaints");
         printf("\n5. View My Punishments");
         printf("\n6. Apply For Grievance");
-        printf("\n7. Logout");
+        printf("\n7. Set/Change Recovery Code");
+        printf("\n8. Logout");
         printf("\nEnter Choice: ");
 
         if (scanf("%d", &choice) != 1) {
@@ -862,12 +955,15 @@ void user_dashboard(const char *username) {
                 apply_for_grievance(username);
                 break;
             case 7:
+                set_recovery_code(username);
+                break;
+            case 8:
                 printf("Logging out...\n");
                 break;
             default:
                 printf("\nInvalid choice!\n");
         }
-    } while (choice != 7);
+    } while (choice != 8);
 }
 void user_login() {
     char input_id[ID_LEN], input_pass[PASS_LEN];
@@ -901,15 +997,19 @@ void user_login() {
         printf("\nInvalid Registration ID or password. Returning to menu...\n");
         return;
     }
+    else {
+        printf("\nCredentials verified. Welcome, %s!\n", input_id);
 
-    printf("\nCredentials verified. Welcome, %s!\n", input_id);
 
-    /* FIX: Force password reset if flag is 1 */
+        trigger_accused_popup_on_login(input_id);
+    }
+
+
     if (first_login_flag == 1) {
         force_password_reset(input_id);
     }
 
-    /* FIX: Launch dashboard after login */
+
     user_dashboard(input_id);
 }
 
@@ -921,7 +1021,8 @@ void User()
         printf("\n================ USER PORTAL ================\n");
         printf("1. Register\n");
         printf("2. Login\n");
-        printf("3. Back to Main Menu\n");
+        printf("3. Forgot Password\n");
+        printf("4. Back to Main Menu\n");
         printf("Enter your choice: ");
 
         if (scanf("%d", &choice) != 1) {
@@ -939,6 +1040,9 @@ void User()
                 user_login();
                 break;
             case 3:
+                forgot_password();
+                break;
+            case 4:
                 printf("Returning to Main Menu...\n");
                 break;
 
@@ -946,5 +1050,5 @@ void User()
                 printf("Invalid choice. Please try again.\n");
                 break;
         }
-    } while (choice != 3);
+    } while (choice != 4);
 }
