@@ -1,12 +1,15 @@
+
 #ifndef USER_H
 #define USER_H
 
 // --- File Path Definitions ---
-#define RATINGS_FILE    "admin_ratings.txt"
+
 #define DB_FILE         "user.txt"
 #define RECOVERY_FILE   "user_recovery.txt"
 #define PUNISHMENT_FILE "punishments.txt"
-#define NOTIF_FILE      "notifications.txt"
+#ifndef NOTIF_FILE
+#define NOTIF_FILE "notifications.txt"
+#endif
 #define FILE_NAME       "complaints.csv"
 // --- Buffer & ID Length Limits ---
 #define MAX      100
