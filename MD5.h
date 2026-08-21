@@ -19,3 +19,4 @@ void MD5Final_Inline(unsigned char digest[16], MD5_CTX_INLINE *context);
 void get_user_md5(const char *input, char *output_hash);
 
 #endif // MD5_H
+
