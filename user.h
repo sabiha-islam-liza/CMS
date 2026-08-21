@@ -8,7 +8,6 @@
 #define PUNISHMENT_FILE "punishments.txt"
 #define NOTIF_FILE      "notifications.txt"
 #define FILE_NAME       "complaints.csv"
-
 // --- Buffer & ID Length Limits ---
 #define MAX      100
 #define ID_LEN   50
@@ -32,12 +31,22 @@ typedef struct {
 
 // --- Function Prototypes ---
 
+
+
+// Sayma (252-35-468)
 // Complaint File & Load Operations
 int generateComplaintID();
 void FileComplaint(const char *logged_in_user);
 int load_all_complaints(Complaint complaints[], int *count);
 int save_complaints(Complaint complaints[], int count);
 
+
+
+
+
+
+
+// Liza (252-35-485)
 // Notification & Alert Operations
 void notify_general_admin(int complaint_id, const char *category, const char *user_id);
 void notify_assigned_team(const char *teamName, int complaintID, const char *status);
@@ -48,7 +57,6 @@ void notify_filing_user(const char *user_id, int complaint_id, const char *categ
 void check_user_notifications(const char *username);
 void check_and_alert_accused(const char *username);
 void send_notification(const char *target_admin, int complaint_id, const char *msg);
-
 // User Authentication & Account Management
 int is_id_registered(const char *user_id);
 void user_register();
@@ -56,26 +64,28 @@ void user_login();
 void user_dashboard(const char *username);
 void User();
 void apply_for_grievance(const char *logged_in_user);
+// Ratings & Punishments
+void update_admin_rating_record(const char *admin_id, int new_rating);
+void rate_resolved_complaint(const char *logged_in_user);
+void view_user_punishments(const char *logged_in_user);
+// Complaint View Helpers
+void viewComplaints(const char *logged_in_user);
+void viewAccusedComplaints(const char *logged_in_user);
+void viewComplaintsByAssignedTeam(const char *team_name);
+// System & String Utilities
+void set_win_color(unsigned short color);
 
+
+
+
+
+//Samiha (252-35-412)
 // Password & Recovery System
 int recovery_code_exists(const char *user_id);
 int save_recovery_code(const char *user_id, const char *recovery_code);
 void set_recovery_code(const char *user_id);
 void forgot_password();
 void force_password_reset(const char *user_id);
-
-// Ratings & Punishments
-void update_admin_rating_record(const char *admin_id, int new_rating);
-void rate_resolved_complaint(const char *logged_in_user);
-void view_user_punishments(const char *logged_in_user);
-
-// Complaint View Helpers
-void viewComplaints(const char *logged_in_user);
-void viewAccusedComplaints(const char *logged_in_user);
-void viewComplaintsByAssignedTeam(const char *team_name);
-
-// System & String Utilities
-void set_win_color(unsigned short color);
 int case_insensitive_compare(const char *a, const char *b);
 
 #endif // USER_H
