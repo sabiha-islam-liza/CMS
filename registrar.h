@@ -1,13 +1,13 @@
+
 #ifndef REGISTRAR_H
 #define REGISTRAR_H
 
 #include <stdio.h>
 #include <string.h>
 #include "md5.h"   // for get_user_md5
+#include "user.h"
+#include "admin.h"
 
-// Constants
-#define HASH_LEN 64
-#define RATINGS_FILE "ratings.txt"
 
 // External setup key
 extern const char *Registrar_Key;
@@ -20,7 +20,6 @@ int get_menu_choice();
 FILE* safe_open(const char *filename, const char *mode);
 int confirm_password(const char *pass, const char *confirm);
 void hash_password(const char *password, char *output);
-
 // Registrar function prototypes
 void registrar_register();
 int registrar_login(char *logged_user);
